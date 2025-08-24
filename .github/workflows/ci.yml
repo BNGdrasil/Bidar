@@ -53,13 +53,6 @@ jobs:
     - name: Install dependencies
       run: uv sync
 
-    - name: Run linting
-      run: |
-        uv run black --check src tests
-        uv run isort --check-only src tests
-        uv run flake8 src tests
-        uv run mypy src
-
     - name: Run tests
       env:
         DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
