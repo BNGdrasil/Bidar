@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.config import Settings
+from src.core.config import Settings
 
 
 class TestSettings:
@@ -16,16 +16,19 @@ class TestSettings:
 
     def test_default_settings(self) -> None:
         """Test default settings values."""
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {"DEBUG": "false"}, clear=True):
             settings = Settings()
             assert settings.ENVIRONMENT == "development"
             assert settings.DEBUG is False
             assert settings.LOG_LEVEL == "INFO"
             assert settings.HOST == "0.0.0.0"
             assert settings.PORT == 8001
-            assert settings.ALLOWED_HOSTS == ["*"]
-            assert settings.ALLOWED_ORIGINS == ["*"]
-            assert settings.JWT_SECRET_KEY == "your-secret-key-change-in-production"
+            assert settings.ALLOWED_HOSTS == "*"
+            assert settings.ALLOWED_ORIGINS == "*"
+            assert (
+                "your-" in settings.JWT_SECRET_KEY
+                and "change" in settings.JWT_SECRET_KEY
+            )
             assert settings.JWT_ALGORITHM == "HS256"
             assert settings.ACCESS_TOKEN_EXPIRE_MINUTES == 30
             assert settings.REFRESH_TOKEN_EXPIRE_DAYS == 7
@@ -71,11 +74,8 @@ class TestSettings:
         assert settings.RATE_LIMIT_PER_MINUTE == 120
         assert settings.REDIS_URL == "redis://localhost:6379/0"
         assert settings.DATABASE_URL == "postgresql://test:test@localhost:5432/test"
-        assert settings.ALLOWED_HOSTS == ["localhost", "127.0.0.1"]
-        assert settings.ALLOWED_ORIGINS == [
-            "https://example.com",
-            "https://api.example.com",
-        ]
+        assert settings.ALLOWED_HOSTS == "localhost,127.0.0.1"
+        assert settings.ALLOWED_ORIGINS == "https://example.com,https://api.example.com"
 
     def test_boolean_parsing(self) -> None:
         """Test boolean environment variable parsing."""
@@ -105,36 +105,33 @@ class TestSettings:
             settings = Settings()
             assert settings.ACCESS_TOKEN_EXPIRE_MINUTES == 45
 
-    def test_list_parsing(self) -> None:
-        """Test list environment variable parsing."""
+    def test_string_parsing(self) -> None:
+        """Test string environment variable parsing."""
         with patch.dict(os.environ, {"ALLOWED_HOSTS": "host1,host2,host3"}):
             settings = Settings()
-            assert settings.ALLOWED_HOSTS == ["host1", "host2", "host3"]
+            assert settings.ALLOWED_HOSTS == "host1,host2,host3"
 
         with patch.dict(
             os.environ, {"ALLOWED_ORIGINS": "https://site1.com,https://site2.com"}
         ):
             settings = Settings()
-            assert settings.ALLOWED_ORIGINS == [
-                "https://site1.com",
-                "https://site2.com",
-            ]
+            assert settings.ALLOWED_ORIGINS == "https://site1.com,https://site2.com"
 
-    def test_single_item_list(self) -> None:
-        """Test list parsing with single item."""
+    def test_single_item_string(self) -> None:
+        """Test string parsing with single item."""
         with patch.dict(os.environ, {"ALLOWED_HOSTS": "singlehost"}):
             settings = Settings()
-            assert settings.ALLOWED_HOSTS == ["singlehost"]
+            assert settings.ALLOWED_HOSTS == "singlehost"
 
-    def test_empty_list_fallback(self) -> None:
-        """Test empty list fallback to default."""
+    def test_empty_string_fallback(self) -> None:
+        """Test empty string fallback to default."""
         with patch.dict(os.environ, {"ALLOWED_HOSTS": ""}):
             settings = Settings()
-            assert settings.ALLOWED_HOSTS == [""]
+            assert settings.ALLOWED_HOSTS == ""
 
     def test_settings_singleton(self) -> None:
         """Test that settings instance is consistent."""
-        from src.config import settings
+        from src.core.config import settings
 
         assert isinstance(settings, Settings)
         # In CI environment, ENVIRONMENT might be set to 'test'

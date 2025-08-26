@@ -4,12 +4,12 @@
 # @author bnbong bbbong9@gmail.com
 # --------------------------------------------------------------------------
 import pytest
-import pytest_asyncio  # type: ignore
+import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.auth import get_password_hash
-from src.models.user import User
+from src.crud.auth import get_password_hash
+from src.models.users import User
 
 
 class TestAPIEndpoints:
@@ -72,7 +72,7 @@ class TestAPIEndpoints:
             "password": "apipassword123",
         }
 
-        response = client.post("/auth/token", data=login_data)  # type: ignore
+        response = client.post("/auth/token", data=login_data)
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data

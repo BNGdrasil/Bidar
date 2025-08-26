@@ -177,22 +177,31 @@ docker run -p 8001:8001 --env-file .env auth-server
 ## 프로젝트 구조
 
 ```
-auth-server/
+Bidar/
 ├── src/
+│   ├── api/            # API 라우터
+│   │   ├── routes/     # 각 라우터 파일
+│   │   └── api.py      # API 라우터 집합
 │   ├── core/           # 핵심 비즈니스 로직
-│   │   ├── auth.py     # 인증 관련 로직
-│   │   ├── users.py    # 사용자 관리 로직
-│   │   └── database.py # 데이터베이스 설정
+│   │   ├── config.py   # 설정 관리
+│   │   ├── database.py # 데이터베이스 설정
+│   │   └── auth.py     # 인증 관련 로직
+│   ├── crud/           # CRUD 로직
+│   │   ├── auth.py     # 인증 관련 CRUD
+│   │   └── users.py    # 사용자 관리 로직
 │   ├── models/         # 데이터 모델
-│   │   └── user.py     # 사용자 모델
+│   │   └── users.py    # 사용자 모델
+│   ├── schemas/        # Pydantic 모델
+│   │   └── users.py    # 사용자 스키마
 │   ├── utils/          # 유틸리티 함수
-│   ├── config.py       # 설정 관리
-│   └── main.py         # 애플리케이션 진입점
+│   ├── main.py         # 애플리케이션 진입점
+│   └── __init__.py     # 패키지 초기화
 ├── tests/              # 테스트 코드
 ├── scripts/            # 개발 스크립트
 ├── requirements.txt    # Python 의존성
 ├── pyproject.toml      # 프로젝트 설정
-└── Dockerfile          # Docker 설정
+├── Dockerfile          # Docker 설정
+└── README.md           # 프로젝트 설명
 ```
 
 ## 라이선스

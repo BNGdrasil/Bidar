@@ -6,11 +6,11 @@
 from datetime import datetime, timedelta
 
 import pytest
-import pytest_asyncio  # type: ignore
+import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.auth import (
+from src.crud.auth import (
     authenticate_user,
     create_access_token,
     create_refresh_token,
@@ -20,7 +20,7 @@ from src.core.auth import (
     get_user,
     verify_password,
 )
-from src.models.user import User
+from src.models.users import User
 
 
 class TestAuthFunctions:
@@ -156,13 +156,13 @@ class TestAuthFunctions:
         """Test getting current user with valid token."""
         from fastapi import Depends
 
-        from src.core.auth import oauth2_scheme
+        from src.crud.auth import oauth2_scheme
 
         # Create a valid token
         token = create_access_token({"sub": test_user.username})
 
         # Mock the token dependency
-        async def mock_token():
+        async def mock_token() -> str:
             return token
 
         # Test get_current_user
@@ -174,7 +174,7 @@ class TestAuthFunctions:
         self, db_session: AsyncSession
     ) -> None:
         """Test getting current user with invalid token."""
-        from src.core.auth import oauth2_scheme
+        from src.crud.auth import oauth2_scheme
 
         # Test with invalid token
         with pytest.raises(Exception):  # Should raise HTTPException
