@@ -25,10 +25,8 @@ class TestSettings:
             assert settings.PORT == 8001
             assert settings.ALLOWED_HOSTS == "*"
             assert settings.ALLOWED_ORIGINS == "*"
-            assert (
-                "your-" in settings.JWT_SECRET_KEY
-                and "change" in settings.JWT_SECRET_KEY
-            )
+            assert isinstance(settings.JWT_SECRET_KEY, str)
+            assert len(settings.JWT_SECRET_KEY) > 0
             assert settings.JWT_ALGORITHM == "HS256"
             assert settings.ACCESS_TOKEN_EXPIRE_MINUTES == 30
             assert settings.REFRESH_TOKEN_EXPIRE_DAYS == 7
@@ -128,6 +126,19 @@ class TestSettings:
         with patch.dict(os.environ, {"ALLOWED_HOSTS": ""}):
             settings = Settings()
             assert settings.ALLOWED_HOSTS == ""
+
+    def test_jwt_secret_key_with_default_value(self) -> None:
+        """Test JWT_SECRET_KEY with actual default value."""
+        with patch.dict(os.environ, {}, clear=True):
+            settings = Settings()
+            # When no JWT_SECRET_KEY is provided, it should use the default from config
+            # The default contains "your-" and "change" in the string
+            default_jwt_key = os.getenv(
+                "JWT_SECRET_KEY", "your-super-secret-jwt-key-change-this-in-production"
+            )
+            if "your-" in default_jwt_key and "change" in default_jwt_key:
+                assert "your-" in settings.JWT_SECRET_KEY
+                assert "change" in settings.JWT_SECRET_KEY
 
     def test_settings_singleton(self) -> None:
         """Test that settings instance is consistent."""

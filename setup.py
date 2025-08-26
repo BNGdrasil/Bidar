@@ -15,7 +15,7 @@ setup(
     description="[FastAPI-fastkit templated] authentication server of Bifrost(gateway server)",
     author="bnbong",
     author_email=f"bbbong9@gmail.com",
-    packages=find_packages(where="bidar"),
+    packages=find_packages(where="src"),
     requires=["python (>=3.12)"],
     install_requires=install_requires,
 )
