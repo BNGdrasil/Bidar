@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     )
 
     SECRET_KEY: str = secrets.token_urlsafe(32)
-    ENVIRONMENT: Literal["development", "production"] = "development"
+    ENVIRONMENT: Literal["development", "production", "test"] = "development"
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
