@@ -9,7 +9,6 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
 
-from src.core.database import init_db
 from src.models.users import APIKey, User
 from tests.conftest import test_engine
 
