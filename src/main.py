@@ -1,5 +1,5 @@
 # --------------------------------------------------------------------------
-# Main entry point for the authentication service
+# Main server application module
 #
 # @author bnbong bbbong9@gmail.com
 # --------------------------------------------------------------------------
@@ -11,9 +11,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from .config import settings
-from .core.auth import router as auth_router
-from .core.users import router as users_router
+from src.api.api import api_router
+from src.core.config import settings
 
 
 @asynccontextmanager
@@ -23,7 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     print("Starting Auth Server")
 
     # Initialize database
-    from .core.database import init_db
+    from src.core.database import init_db
 
     await init_db()
 
@@ -58,8 +57,7 @@ def create_app() -> FastAPI:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS)
 
     # Add routes
-    app.include_router(auth_router, prefix="/auth", tags=["authentication"])
-    app.include_router(users_router, prefix="/users", tags=["users"])
+    app.include_router(api_router)
 
     # Health check endpoint
     @app.get("/health")
@@ -83,8 +81,8 @@ app = create_app()
 if __name__ == "__main__":
     uvicorn.run(
         "src.main:app",
-        host="0.0.0.0",
-        port=8001,
+        host=settings.HOST,
+        port=settings.PORT,
         reload=settings.ENVIRONMENT == "development",
         log_level=settings.LOG_LEVEL.lower(),
     )

@@ -6,10 +6,10 @@
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel
 
-from ..config import settings
+from .config import settings
 
 # Create async engine
 engine = create_async_engine(
@@ -24,14 +24,11 @@ AsyncSessionLocal = sessionmaker(
     bind=engine, class_=AsyncSession, expire_on_commit=False
 )  # type: ignore
 
-# Create base class for models
-Base = declarative_base()
-
 
 async def init_db() -> None:
     """Initialize database tables."""
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(SQLModel.metadata.create_all)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

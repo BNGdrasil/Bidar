@@ -4,19 +4,21 @@
 # @author bnbong bbbong9@gmail.com
 # --------------------------------------------------------------------------
 import pytest
-import pytest_asyncio  # type: ignore
+import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.auth import get_password_hash
-from src.core.users import (
-    UserRegisterRequest,
-    activate_user,
-    deactivate_user,
-    list_users,
-    register_user,
+from src.crud.auth import get_password_hash
+from src.crud.users import activate_user as crud_activate_user
+from src.crud.users import (
+    create_user,
 )
-from src.models.user import User
+from src.crud.users import deactivate_user as crud_deactivate_user
+from src.crud.users import (
+    get_users,
+)
+from src.models.users import User
+from src.schemas.users import UserRegisterRequest
 
 
 class TestUserManagement:
@@ -63,27 +65,24 @@ class TestUserManagement:
             "full_name": "New User",
         }
 
-        from src.core.users import UserRegisterRequest
-
         user_request = UserRegisterRequest(
             username=str(user_data["username"]),
             email=str(user_data["email"]),
             password=str(user_data["password"]),
             full_name=str(user_data["full_name"]),
         )
-        result = await register_user(
-            user_data=user_request,
-            db=db_session,
-        )
+        result = await create_user(db_session, user_request)
 
-        assert result["message"] == "User registered successfully"
-        assert "user_id" in result
-        assert result["username"] == user_data["username"]
-        assert result["email"] == user_data["email"]
+        assert result.username == user_data["username"]
+        assert result.email == user_data["email"]
+        assert result.full_name == user_data["full_name"]
+        assert result.is_active is True
+        assert result.is_superuser is False
+        assert result.id is not None
 
         # Verify user was actually created in database
         result_query = await db_session.execute(
-            select(User).where(User.username == user_data["username"])
+            select(User).where(User.username == user_data["username"])  # type: ignore
         )
         user = result_query.scalar_one_or_none()
         assert user is not None
@@ -93,78 +92,52 @@ class TestUserManagement:
         assert user.is_active is True
         assert user.is_superuser is False
 
-    async def test_register_user_duplicate_username(
+    async def test_create_user_duplicate_username(
         self, db_session: AsyncSession, test_user: User
     ) -> None:
-        """Test user registration with duplicate username."""
-        user_data = {
-            "username": test_user.username,  # Same username as existing user
-            "email": "different@example.com",
-            "password": "differentpassword123",
-            "full_name": "Different User",
-        }
+        """Test user creation with duplicate username."""
+        user_request = UserRegisterRequest(
+            username=test_user.username,  # Same username as existing user
+            email="different@example.com",
+            password="differentpassword123",
+            full_name="Different User",
+        )
 
-        with pytest.raises(Exception):  # Should raise HTTPException
-            user_request = UserRegisterRequest(
-                username=str(user_data["username"]),
-                email=str(user_data["email"]),
-                password=str(user_data["password"]),
-                full_name=str(user_data["full_name"]),
-            )
-            await register_user(
-                user_data=user_request,
-                db=db_session,
-            )
+        with pytest.raises(Exception):  # Should raise database constraint error
+            await create_user(db_session, user_request)
 
-    async def test_register_user_duplicate_email(
+    async def test_create_user_duplicate_email(
         self, db_session: AsyncSession, test_user: User
     ) -> None:
-        """Test user registration with duplicate email."""
-        user_data = {
-            "username": "differentuser",
-            "email": test_user.email,  # Same email as existing user
-            "password": "differentpassword123",
-            "full_name": "Different User",
-        }
+        """Test user creation with duplicate email."""
+        user_request = UserRegisterRequest(
+            username="differentuser",
+            email=test_user.email,  # Same email as existing user
+            password="differentpassword123",
+            full_name="Different User",
+        )
 
-        with pytest.raises(Exception):  # Should raise HTTPException
-            user_request = UserRegisterRequest(
-                username=str(user_data["username"]),
-                email=str(user_data["email"]),
-                password=str(user_data["password"]),
-                full_name=str(user_data["full_name"]),
-            )
-            await register_user(
-                user_data=user_request,
-                db=db_session,
-            )
+        with pytest.raises(Exception):  # Should raise database constraint error
+            await create_user(db_session, user_request)
 
-    async def test_register_user_without_full_name(
+    async def test_create_user_without_full_name(
         self, db_session: AsyncSession
     ) -> None:
-        """Test user registration without full name."""
-        user_data = {
-            "username": "nofullname",
-            "email": "nofullname@example.com",
-            "password": "password123",
-        }
-
+        """Test user creation without full name."""
         user_request = UserRegisterRequest(
-            username=user_data["username"],
-            email=user_data["email"],
-            password=user_data["password"],
+            username="nofullname",
+            email="nofullname@example.com",
+            password="password123",
         )
-        result = await register_user(
-            user_data=user_request,
-            db=db_session,
-        )
+        result = await create_user(db_session, user_request)
 
-        assert result["message"] == "User registered successfully"
-        assert result["username"] == user_data["username"]
+        assert result.username == "nofullname"
+        assert result.email == "nofullname@example.com"
+        assert result.full_name is None
 
         # Verify user was created with null full_name
         result_query = await db_session.execute(
-            select(User).where(User.username == user_data["username"])
+            select(User).where(User.username == "nofullname")  # type: ignore
         )
         user = result_query.scalar_one_or_none()
         assert user is not None
@@ -190,33 +163,43 @@ class TestUserManagement:
         db_session.add_all([user1, user2])
         await db_session.commit()
 
-        # Test listing users as superuser
-        users = await list_users(current_user=test_superuser, db=db_session)
+        # Test listing users
+        users = await get_users(db_session)
 
         # Should return all users including superuser
         assert len(users) >= 3  # At least test_superuser, user1, user2
 
         # Verify user data structure
-        for user_data in users:
-            assert "id" in user_data
-            assert "username" in user_data
-            assert "email" in user_data
-            assert "full_name" in user_data
-            assert "is_active" in user_data
-            assert "is_superuser" in user_data
-            assert "created_at" in user_data
+        for user in users:
+            assert hasattr(user, "id")
+            assert hasattr(user, "username")
+            assert hasattr(user, "email")
+            assert hasattr(user, "full_name")
+            assert hasattr(user, "is_active")
+            assert hasattr(user, "is_superuser")
+            assert hasattr(user, "created_at")
 
-    async def test_list_users_non_superuser_access(
-        self, db_session: AsyncSession, test_user: User
-    ) -> None:
-        """Test listing users without superuser access."""
-        with pytest.raises(Exception):  # Should raise HTTPException
-            await list_users(current_user=test_user, db=db_session)
+    async def test_get_users_with_pagination(self, db_session: AsyncSession) -> None:
+        """Test getting users with pagination."""
+        # Create additional users
+        for i in range(5):
+            user = User(
+                username=f"user{i}",
+                email=f"user{i}@example.com",
+                hashed_password=get_password_hash(f"password{i}"),
+            )
+            db_session.add(user)
+        await db_session.commit()
 
-    async def test_activate_user_superuser_access(
-        self, db_session: AsyncSession, test_superuser: User
-    ) -> None:
-        """Test activating user with superuser access."""
+        # Test pagination
+        users_page1 = await get_users(db_session, skip=0, limit=3)
+        users_page2 = await get_users(db_session, skip=3, limit=3)
+
+        assert len(users_page1) <= 3
+        assert len(users_page2) <= 3
+
+    async def test_activate_user(self, db_session: AsyncSession) -> None:
+        """Test activating user."""
         # Create inactive user
         inactive_user = User(
             username="inactiveuser",
@@ -229,50 +212,27 @@ class TestUserManagement:
         await db_session.refresh(inactive_user)
 
         # Activate user
-        result = await activate_user(
-            user_id=int(inactive_user.id),
-            current_user=test_superuser,
-            db=db_session,
-        )
+        result = await crud_activate_user(db_session, int(inactive_user.id))  # type: ignore
 
-        assert (
-            result["message"] == f"User {inactive_user.username} activated successfully"
-        )
+        assert result is not None
+        assert result.is_active is True
+        assert result.username == "inactiveuser"
 
-        # Verify user is now active
+        # Verify user is now active in database
         result_query = await db_session.execute(
-            select(User).where(User.id == inactive_user.id)
+            select(User).where(User.id == inactive_user.id)  # type: ignore
         )
         user = result_query.scalar_one_or_none()
         assert user is not None
         assert user.is_active is True
 
-    async def test_activate_user_non_superuser_access(
-        self, db_session: AsyncSession, test_user: User
-    ) -> None:
-        """Test activating user without superuser access."""
-        with pytest.raises(Exception):  # Should raise HTTPException
-            await activate_user(
-                user_id=1,
-                current_user=test_user,
-                db=db_session,
-            )
-
-    async def test_activate_nonexistent_user(
-        self, db_session: AsyncSession, test_superuser: User
-    ) -> None:
+    async def test_activate_nonexistent_user(self, db_session: AsyncSession) -> None:
         """Test activating non-existent user."""
-        with pytest.raises(Exception):  # Should raise HTTPException
-            await activate_user(
-                user_id=99999,  # Non-existent user ID
-                current_user=test_superuser,
-                db=db_session,
-            )
+        result = await crud_activate_user(db_session, 99999)  # Non-existent user ID
+        assert result is None
 
-    async def test_deactivate_user_superuser_access(
-        self, db_session: AsyncSession, test_superuser: User
-    ) -> None:
-        """Test deactivating user with superuser access."""
+    async def test_deactivate_user(self, db_session: AsyncSession) -> None:
+        """Test deactivating user."""
         # Create active user
         active_user = User(
             username="activeuser",
@@ -285,78 +245,39 @@ class TestUserManagement:
         await db_session.refresh(active_user)
 
         # Deactivate user
-        result = await deactivate_user(
-            user_id=int(active_user.id),
-            current_user=test_superuser,
-            db=db_session,
-        )
+        result = await crud_deactivate_user(db_session, int(active_user.id))  # type: ignore
 
-        assert (
-            result["message"] == f"User {active_user.username} deactivated successfully"
-        )
+        assert result is not None
+        assert result.is_active is False
+        assert result.username == "activeuser"
 
-        # Verify user is now inactive
+        # Verify user is now inactive in database
         result_query = await db_session.execute(
-            select(User).where(User.id == active_user.id)
+            select(User).where(User.id == active_user.id)  # type: ignore
         )
         user = result_query.scalar_one_or_none()
         assert user is not None
         assert user.is_active is False
 
-    async def test_deactivate_user_non_superuser_access(
-        self, db_session: AsyncSession, test_user: User
-    ) -> None:
-        """Test deactivating user without superuser access."""
-        with pytest.raises(Exception):  # Should raise HTTPException
-            await deactivate_user(
-                user_id=1,
-                current_user=test_user,
-                db=db_session,
-            )
-
-    async def test_deactivate_nonexistent_user(
-        self, db_session: AsyncSession, test_superuser: User
-    ) -> None:
+    async def test_deactivate_nonexistent_user(self, db_session: AsyncSession) -> None:
         """Test deactivating non-existent user."""
-        with pytest.raises(Exception):  # Should raise HTTPException
-            await deactivate_user(
-                user_id=99999,  # Non-existent user ID
-                current_user=test_superuser,
-                db=db_session,
-            )
+        result = await crud_deactivate_user(db_session, 99999)  # Non-existent user ID
+        assert result is None
 
-    async def test_register_user_password_hashing(
-        self, db_session: AsyncSession
-    ) -> None:
-        """Test that user registration properly hashes passwords."""
-        user_data = {
-            "username": "passwordtestuser",
-            "email": "passwordtest@example.com",
-            "password": "plaintextpassword",
-            "full_name": "Password Test User",
-        }
-
+    async def test_create_user_password_hashing(self, db_session: AsyncSession) -> None:
+        """Test that user creation properly hashes passwords."""
         user_request = UserRegisterRequest(
-            username=user_data["username"],
-            email=user_data["email"],
-            password=user_data["password"],
-            full_name=user_data["full_name"],
+            username="passwordtestuser",
+            email="passwordtest@example.com",
+            password="plaintextpassword",
+            full_name="Password Test User",
         )
-        await register_user(
-            user_data=user_request,
-            db=db_session,
-        )
+
+        created_user = await create_user(db_session, user_request)
 
         # Verify password was hashed
-        result_query = await db_session.execute(
-            select(User).where(User.username == user_data["username"])
-        )
-        user = result_query.scalar_one_or_none()
-        assert user is not None
-        assert user.hashed_password != user_data["password"]  # Should be hashed
-        assert len(user.hashed_password) > len(
-            user_data["password"]
-        )  # Hash should be longer
+        assert created_user.hashed_password != "plaintextpassword"
+        assert created_user.hashed_password.startswith("$2b$")  # bcrypt hash format
 
     async def test_user_registration_timestamps(self, db_session: AsyncSession) -> None:
         """Test that user registration sets proper timestamps."""
@@ -371,14 +292,11 @@ class TestUserManagement:
             email=user_data["email"],
             password=user_data["password"],
         )
-        await register_user(
-            user_data=user_request,
-            db=db_session,
-        )
+        await create_user(db_session, user_request)
 
         # Verify timestamps
         result_query = await db_session.execute(
-            select(User).where(User.username == user_data["username"])
+            select(User).where(User.username == user_data["username"])  # type: ignore
         )
         user = result_query.scalar_one_or_none()
         assert user is not None

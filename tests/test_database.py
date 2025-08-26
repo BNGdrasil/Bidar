@@ -4,12 +4,12 @@
 # @author bnbong bbbong9@gmail.com
 # --------------------------------------------------------------------------
 import pytest
-import pytest_asyncio  # type: ignore
+import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import SQLModel
 
-from src.core.database import Base, init_db
-from src.models.user import APIKey, User
+from src.models.users import APIKey, User
 from tests.conftest import test_engine
 
 
@@ -27,10 +27,9 @@ class TestDatabase:
         # Test that tables can be created
         # Note: init_db() uses the main engine, not test engine
         # So we'll test table creation directly with test engine
-        from src.core.database import Base
 
         async with test_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(SQLModel.metadata.create_all)
 
         # Verify that tables exist by trying to query them
         result = await test_db_session.execute(

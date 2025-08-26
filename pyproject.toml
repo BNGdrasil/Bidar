@@ -1,12 +1,12 @@
 [project]
-name = "auth-server"
+name = "bidar"
 dynamic = ["version"]
-description = "JWT authentication server for bnbong.xyz"
-readme = "README.md"
-requires-python = ">=3.9"
+description = "authentication server of Bifrost(gateway server)"
 authors = [
-    { name = "bnbong", email = "bbbong9@gmail.com" }
+    {name = "bnbong", email = "bbbong9@gmail.com"},
 ]
+readme = "README.md"
+requires-python = ">=3.12"
 license = "MIT"
 keywords = ["python", "fastapi", "jwt", "auth"]
 classifiers = [
@@ -36,6 +36,9 @@ dependencies = [
     "greenlet==3.0.3",
     "types-python-jose",
     "types-passlib",
+    "fastapi-fastkit>=1.1.1",
+    "setuptools>=80.9.0",
+    "sqlmodel>=0.0.24",
 ]
 
 [project.urls]
@@ -46,8 +49,8 @@ dependencies = [
 [project.scripts]
 auth-server = "src.main:main"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=5.0",
@@ -59,6 +62,8 @@ dev-dependencies = [
     "mypy>=1.8",
     "pre-commit>=3.6",
     "flake8-docstrings>=1.7.0",
+    "bandit>=1.7.0",
+    "safety>=3.0.0",
 ]
 
 [build-system]
@@ -111,6 +116,10 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+
+[[tool.mypy.overrides]]
+module = "setuptools.*"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"

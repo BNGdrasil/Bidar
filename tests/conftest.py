@@ -7,12 +7,11 @@ import asyncio
 from typing import AsyncGenerator, Generator
 
 import pytest
-import pytest_asyncio  # type: ignore
+import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.config import settings
 from src.core.database import get_db
 from src.main import app
 
@@ -45,27 +44,25 @@ def event_loop() -> Generator:
 @pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Create a test database session."""
+    from sqlmodel import SQLModel
+
     async with test_engine.begin() as conn:
         # Create tables
-        from src.core.database import Base
-
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(SQLModel.metadata.create_all)
 
     async with TestingSessionLocal() as session:
         yield session
 
     async with test_engine.begin() as conn:
         # Drop tables
-        from src.core.database import Base
-
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(SQLModel.metadata.drop_all)
 
 
 @pytest_asyncio.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[TestClient, None]:
     """Create a test client with test database."""
 
-    async def override_get_db():
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
