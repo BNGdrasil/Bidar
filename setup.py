@@ -12,7 +12,7 @@ install_requires: list[str] = [
 
 setup(
     name="bidar",
-    description="[FastAPI-fastkit templated] authentication server of Bifrost(gateway server)",
+    description="[FastAPI-fastkit templated] authentication server",
     author="bnbong",
     author_email=f"bbbong9@gmail.com",
     packages=find_packages(where="src"),

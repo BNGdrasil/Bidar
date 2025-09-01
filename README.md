@@ -1,209 +1,273 @@
-# Bidar (Bnbong + Vidar)
+<p align="center">
+    <img align="top" width="30%" src="https://github.com/BNGdrasil/BNGdrasil/blob/main/images/Bidar.png" alt="Bidar"/>
+</p>
 
-Authentication server of Bifrost(gateway server)
+<div align="center">
 
-JWT 기반 인증 서버로, 마이크로서비스 아키텍처(MSA) 환경에서 사용자 인증을 담당하는 서비스입니다.
+# 🔐 Bidar (bnbong + Vidar)
 
-## 기능
+**Centralized Authentication Server for BNGdrasil Ecosystem**
 
-- **JWT 토큰 기반 인증**: Access Token과 Refresh Token 지원
-- **사용자 관리**: 회원가입, 로그인, 사용자 정보 조회/수정
-- **보안**: 비밀번호 해싱, Rate Limiting, CORS 설정
-- **데이터베이스**: PostgreSQL을 사용한 사용자 데이터 저장
-- **캐싱**: Redis를 사용한 토큰 및 세션 관리
-- **API 문서**: FastAPI 자동 생성 문서 (개발 환경)
+[![Python](https://img.shields.io/badge/Python-3.12+-3776ab?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Tests](https://img.shields.io/badge/Tests-85%20Passed-green.svg?style=flat-square)](tests/)
+[![Code Style](https://img.shields.io/badge/Code%20Style-Black-black.svg?style=flat-square)](https://github.com/psf/black)
 
-## 기술 스택
+*Part of the [BNGdrasil](https://github.com/BNGdrasil/BNGdrasil) ecosystem - Building a personal cloud nation*
 
-- **Framework**: FastAPI
-- **Database**: PostgreSQL
-- **Cache**: Redis
+</div>
+
+---
+
+## Overview
+
+**Bidar** is the centralized authentication server for the BNGdrasil ecosystem, providing secure JWT-based authentication and user management services. Named after the Norse god Vidar, it serves as the guardian of identity and access control across all microservices in your personal cloud infrastructure.
+
+As a core component of the BNGdrasil project, Bidar seamlessly integrates with **Bifrost** (API Gateway), **Bantheon** (Portfolio/Admin UI), and other services to provide unified authentication across the entire ecosystem.
+
+## Key Features
+
+- **JWT Authentication**: Secure token-based auth with access/refresh tokens
+- **User Management**: Registration, profile management, and admin controls
+- **Security**: bcrypt password hashing, Redis session management, CORS protection
+- **API Documentation**: Auto-generated OpenAPI/Swagger documentation
+
+## Architecture
+
+Bidar is designed as a microservice within the BNGdrasil ecosystem:
+
+```mermaid
+graph LR
+    A["🌐 Cloudflare"] --> B["🔀 Nginx Proxy"]
+    B --> C["🌉 Bifrost<br/>(API Gateway)"]
+    C --> D["🔐 Bidar<br/>(Auth Server)"]
+    D --> E["🗄️ PostgreSQL<br/>(Database)"]
+    D --> F["🔄 Redis<br/>(Cache/Sessions)"]
+
+    style A fill:#f96,stroke:#333,stroke-width:2px
+    style C fill:#4a9,stroke:#333,stroke-width:2px
+    style D fill:#49a,stroke:#333,stroke-width:2px
+    style E fill:#94a,stroke:#333,stroke-width:2px
+    style F fill:#a49,stroke:#333,stroke-width:2px
+```
+
+## Tech Stack
+
+- **Framework**: FastAPI 0.104.1
+- **Database**: PostgreSQL 15+
+- **Cache**: Redis 7+
 - **Authentication**: JWT (python-jose)
 - **Password Hashing**: bcrypt (passlib)
-- **Testing**: pytest
+- **ORM**: SQLModel (SQLAlchemy 2.0)
+- **Testing**: pytest with async support
 - **Code Quality**: black, isort, flake8, mypy
+- **Package Manager**: uv
 
-## 사전 요구사항
+## Prerequisites
 
-- Python 3.9+
-- uv (패키지 매니저)
-- PostgreSQL
-- Redis
+- **Python 3.12+**
+- **Docker**
+- **Redis**
+- **PostgreSQL**
 
-## 빠른 시작
-
-### 1. 환경 설정
+## Installation & Start
 
 ```bash
-# 저장소 클론
+# Clone the repository
 git clone git@github.com:BNGdrasil/Bidar.git
 cd Bidar
 
-# uv 설치 (아직 설치되지 않은 경우)
+# Install uv (if not already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 의존성 설치 및 가상환경 생성
+# Install dependencies and create virtual environment
 uv sync
-```
 
-### 2. 환경 변수 설정
-
-```bash
-# .env 파일 생성
+# Copy environment template
 cp env.example .env
 
-# .env 파일에서 필요한 값들을 설정
-# 특히 JWT_SECRET_KEY는 프로덕션에서 반드시 변경하세요!
-```
+# Edit the .env file with your configuration
+# ⚠️ Important: Change JWT_SECRET_KEY in production
 
-### 3. 데이터베이스 설정
-
-PostgreSQL과 Redis가 실행 중이어야 합니다. Docker를 사용하는 경우:
-
-```bash
-# PostgreSQL과 Redis 실행
-docker run -d --name postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=bnbong -p 5432:5432 postgres:15
-docker run -d --name redis -p 6379:6379 redis:7-alpine
-```
-
-### 4. 서버 실행
-
-```bash
-# 개발 모드로 실행
+# After environment & Database setup
 uv run python -m src.main
 
-# 또는 스크립트 사용
+# Or using development script
 ./scripts/dev.sh
+
+# Server will start at http://localhost:8001
 ```
 
-서버는 기본적으로 `http://localhost:8001`에서 실행됩니다.
+**Essential Environment Variables:**
 
-## API 문서
+```env
+# Security (CHANGE IN PRODUCTION!)
+JWT_SECRET_KEY=your-super-secret-jwt-key-change-this-in-production
+ALLOWED_HOSTS=*
+ALLOWED_ORIGINS=*
 
-개발 환경에서 다음 URL에서 API 문서를 확인할 수 있습니다:
-- Swagger UI: `http://localhost:8001/docs`
-- ReDoc: `http://localhost:8001/redoc`
+# Database
+DATABASE_URL=postgresql://bnbong:password@postgres:5432/bnbong
 
-## 주요 API 엔드포인트
+# Redis
+REDIS_URL=redis://redis:6379/1
 
-### 인증 (Authentication)
+# Server
+HOST=0.0.0.0
+PORT=8001
+ENVIRONMENT=development
+```
 
-- `POST /auth/register` - 회원가입
-- `POST /auth/login` - 로그인
-- `POST /auth/refresh` - 토큰 갱신
-- `POST /auth/logout` - 로그아웃
+### Database Setup
 
-### 사용자 관리 (Users)
-
-- `GET /users/me` - 현재 사용자 정보 조회
-- `PUT /users/me` - 사용자 정보 수정
-- `DELETE /users/me` - 계정 삭제
-
-### 헬스 체크
-
-- `GET /health` - 서비스 상태 확인
-
-## 테스트
+Start PostgreSQL and Redis services. Using Docker:
 
 ```bash
-# 모든 테스트 실행
-uv run pytest
+# Start PostgreSQL
+docker run -d --name postgres \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=bnbong \
+  -e POSTGRES_USER=bnbong \
+  -p 5432:5432 \
+  postgres:15
 
-# 커버리지와 함께 테스트 실행
-uv run pytest --cov=src
+# Start Redis
+docker run -d --name redis \
+  -p 6379:6379 \
+  redis:7-alpine
 
-# 특정 테스트 파일 실행
-uv run pytest tests/test_auth.py
+# Or use Docker Compose (recommended)
+docker compose up -d postgres redis
 ```
 
-## 개발 도구
-
-### Pre-commit Hooks
-
-코드 품질을 자동으로 관리하기 위해 pre-commit hooks를 사용합니다:
+### Verify Installation
 
 ```bash
-# pre-commit 설치 및 설정
-uv run pre-commit install
+# Health check
+curl http://localhost:8001/health
 
-# 모든 파일에 대해 pre-commit 실행
-uv run pre-commit run --all-files
-
-# 특정 hook만 실행
-uv run pre-commit run black
-uv run pre-commit run lint-scripts
+# API documentation
+open http://localhost:8001/docs
 ```
 
-### 수동 실행
+## API Endpoints
+
+### Authentication
+
+```http
+POST /auth/token      # Login (OAuth2 compatible)
+POST /auth/refresh    # Refresh access token
+GET  /auth/me         # Get current user info
+```
+
+### User Management
+
+```http
+POST /users/register           # User registration
+GET  /users/users             # List all users (superuser only)
+PUT  /users/{id}/activate     # Activate user (superuser only)
+PUT  /users/{id}/deactivate   # Deactivate user (superuser only)
+```
+
+### Health & Monitoring
+
+```http
+GET  /health          # Service health check
+GET  /               # Service information
+```
+
+### Request Examples
+
+**User Registration:**
 
 ```bash
-# 코드 포맷팅
-uv run black src tests
-uv run isort src tests
-
-# 린팅
-uv run flake8 src tests
-uv run mypy src
-
-# 테스트 실행
-uv run pytest
-
-# 또는 스크립트 사용
-./scripts/format.sh
-./scripts/lint.sh
-./scripts/test.sh
+curl -X POST "http://localhost:8001/users/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "securepassword123",
+    "full_name": "John Doe"
+  }'
 ```
 
-## Docker
+**Login:**
 
 ```bash
-# Docker 이미지 빌드
-docker build -t auth-server .
-
-# Docker 컨테이너 실행
-docker run -p 8001:8001 --env-file .env auth-server
+curl -X POST "http://localhost:8001/auth/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=johndoe&password=securepassword123"
 ```
 
-## 보안 설정
+**Access Protected Endpoint:**
 
-프로덕션 환경에서는 다음 설정을 반드시 변경할 것:
-
-1. **JWT_SECRET_KEY**: 강력한 비밀키로 변경
-2. **ALLOWED_HOSTS**: 허용된 호스트만 설정
-3. **ALLOWED_ORIGINS**: CORS 허용 도메인 설정
-4. **DATABASE_URL**: 프로덕션 데이터베이스 연결 정보
-5. **REDIS_URL**: 프로덕션 Redis 연결 정보
-
-## 프로젝트 구조
-
-```
-Bidar/
-├── src/
-│   ├── api/            # API 라우터
-│   │   ├── routes/     # 각 라우터 파일
-│   │   └── api.py      # API 라우터 집합
-│   ├── core/           # 핵심 비즈니스 로직
-│   │   ├── config.py   # 설정 관리
-│   │   ├── database.py # 데이터베이스 설정
-│   │   └── auth.py     # 인증 관련 로직
-│   ├── crud/           # CRUD 로직
-│   │   ├── auth.py     # 인증 관련 CRUD
-│   │   └── users.py    # 사용자 관리 로직
-│   ├── models/         # 데이터 모델
-│   │   └── users.py    # 사용자 모델
-│   ├── schemas/        # Pydantic 모델
-│   │   └── users.py    # 사용자 스키마
-│   ├── utils/          # 유틸리티 함수
-│   ├── main.py         # 애플리케이션 진입점
-│   └── __init__.py     # 패키지 초기화
-├── tests/              # 테스트 코드
-├── scripts/            # 개발 스크립트
-├── requirements.txt    # Python 의존성
-├── pyproject.toml      # 프로젝트 설정
-├── Dockerfile          # Docker 설정
-└── README.md           # 프로젝트 설명
+```bash
+curl -X GET "http://localhost:8001/auth/me" \
+  -H "Authorization: Bearer <your-access-token>"
 ```
 
-## 라이선스
+## Docker Deployment
 
-이 프로젝트는 개인 학습 및 개발 목적으로 사용됩니다.
+Bidar uses docker for deployment:
+
+```bash
+# Build Docker image
+docker build -t bidar-auth-server .
+
+# Run container with environment file
+docker run -p 8001:8001 --env-file .env bidar-auth-server
+
+# Or use Docker Compose (recommended for development)
+docker compose up -d
+```
+
+## Security
+
+### Essential Security Checklist
+
+**Critical (Change Before Production):**
+
+```env
+# Generate a strong secret key (32+ characters)
+JWT_SECRET_KEY=<generate-strong-random-key>
+
+# Restrict hosts and origins
+ALLOWED_HOSTS=your-domain.com,api.your-domain.com
+ALLOWED_ORIGINS=https://your-frontend.com
+
+# Use production database
+DATABASE_URL=postgresql://user:password@db-host:5432/bidar_prod
+
+# Use production Redis
+REDIS_URL=redis://redis-host:6379/0
+```
+
+**Recommended:**
+
+- Enable HTTPS/TLS termination at reverse proxy
+- Set up proper logging and monitoring
+- Configure backup strategies for PostgreSQL
+- Implement Redis persistence configuration
+- Set up rate limiting at Bifrost gateway level
+
+---
+
+## BNGdrasil Ecosystem
+
+Bifrost is part of the larger **[BNGdrasil](https://github.com/BNGdrasil)** cloud infrastructure project:
+
+- **🔐 [Bidar](https://github.com/BNGdrasil/Bidar)** - Authentication & Authorization Server (this project)
+- **🌉 [Bifrost](https://github.com/BNGdrasil/Bifrost)** - API Gateway
+- **🏗️ [Baedalus](https://github.com/BNGdrasil/Baedalus)** - Infrastructure as Code (Terraform)
+- **🌐 [Bsgard](https://github.com/BNGdrasil/Bsgard)** - Custom VPC & Networking
+- **🎨 [Bantheon](https://github.com/BNGdrasil/Bantheon)** - Web Frontend & Portfolio
+- **🎮 [Blysium](https://github.com/BNGdrasil/Blysium)** - Gaming Platform
+
+Each component is designed to work independently while integrating seamlessly with others.
+
+---
+
+## License
+
+This project is part of the BNGdrasil personal cloud infrastructure project.
+For educational and personal development purposes.

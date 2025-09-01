@@ -1,13 +1,8 @@
 #!/bin/bash
-# --------------------------------------------------------------------------
-# Auth Server 테스트 실행 스크립트
-#
-# @author bnbong bbbong9@gmail.com
-# --------------------------------------------------------------------------
 
 set -e
 
-echo "🧪 Running Auth Server tests..."
+echo "🧪 Running Bidar tests..."
 
 # Check if we're in the right directory
 if [ ! -f "pyproject.toml" ]; then

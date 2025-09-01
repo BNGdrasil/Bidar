@@ -1,7 +1,7 @@
 [project]
 name = "bidar"
 dynamic = ["version"]
-description = "authentication server of Bifrost(gateway server)"
+description = "authentication server"
 authors = [
     {name = "bnbong", email = "bbbong9@gmail.com"},
 ]
@@ -42,9 +42,9 @@ dependencies = [
 ]
 
 [project.urls]
-"Source" = "https://github.com/bnbong/bnbong.xyz"
+"Source" = "https://github.com/BNGdrasil/Bidar"
 "Homepage" = "https://api.bnbong.xyz"
-"Bug Reports" = "https://github.com/bnbong/bnbong.xyz/issues"
+"Bug Reports" = "https://github.com/BNGdrasil/Bidar/issues"
 
 [project.scripts]
 auth-server = "src.main:main"
