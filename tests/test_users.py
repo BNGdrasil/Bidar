@@ -10,13 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.crud.auth import get_password_hash
 from src.crud.users import activate_user as crud_activate_user
-from src.crud.users import (
-    create_user,
-)
+from src.crud.users import create_user
 from src.crud.users import deactivate_user as crud_deactivate_user
-from src.crud.users import (
-    get_users,
-)
+from src.crud.users import get_users
 from src.models.users import User
 from src.schemas.users import UserRegisterRequest
 

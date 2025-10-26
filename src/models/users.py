@@ -18,9 +18,12 @@ class UserBase(SQLModel):
     full_name: Optional[str] = Field(default=None, max_length=100)
     is_active: bool = Field(default=True)
     is_superuser: bool = Field(default=False)
+    role: str = Field(
+        default="user", max_length=20
+    )  # user, moderator, admin, super_admin
 
 
-class User(UserBase, table=True):
+class User(UserBase, table=True):  # type: ignore[call-arg]
     """User database model."""
 
     __tablename__ = "users"
@@ -60,6 +63,7 @@ class UserUpdate(SQLModel):
     full_name: Optional[str] = Field(default=None, max_length=100)
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
+    role: Optional[str] = Field(default=None, max_length=20)
 
 
 class APIKeyBase(SQLModel):
@@ -70,7 +74,7 @@ class APIKeyBase(SQLModel):
     is_active: bool = Field(default=True)
 
 
-class APIKey(APIKeyBase, table=True):
+class APIKey(APIKeyBase, table=True):  # type: ignore[call-arg]
     """API Key database model for service authentication."""
 
     __tablename__ = "api_keys"

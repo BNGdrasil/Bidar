@@ -40,9 +40,20 @@ async def login_for_access_token(
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={
+            "sub": user.username,
+            "user_id": user.id,
+            "role": user.role,
+        },
+        expires_delta=access_token_expires,
     )
-    refresh_token = create_refresh_token(data={"sub": user.username})
+    refresh_token = create_refresh_token(
+        data={
+            "sub": user.username,
+            "user_id": user.id,
+            "role": user.role,
+        }
+    )
 
     return TokenResponse(
         access_token=access_token,
@@ -83,7 +94,12 @@ async def refresh_access_token(
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={
+            "sub": user.username,
+            "user_id": user.id,
+            "role": user.role,
+        },
+        expires_delta=access_token_expires,
     )
 
     return TokenResponse(
@@ -105,5 +121,6 @@ async def read_users_me(
         full_name=current_user.full_name,
         is_active=current_user.is_active,
         is_superuser=current_user.is_superuser,
+        role=current_user.role,
         created_at=current_user.created_at,
     )

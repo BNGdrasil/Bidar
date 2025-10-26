@@ -103,7 +103,7 @@ known_first_party = ["src"]
 skip_glob = [".venv/*", "build/*", "dist/*"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -119,6 +119,10 @@ strict_equality = true
 
 [[tool.mypy.overrides]]
 module = "setuptools.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "sqlmodel.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

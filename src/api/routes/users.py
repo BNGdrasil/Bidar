@@ -11,15 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
 from src.crud.auth import get_current_active_user
 from src.crud.users import activate_user as crud_activate_user
-from src.crud.users import (
-    create_user,
-)
+from src.crud.users import create_user
 from src.crud.users import deactivate_user as crud_deactivate_user
-from src.crud.users import (
-    get_user_by_email,
-    get_user_by_username,
-    get_users,
-)
+from src.crud.users import get_user_by_email, get_user_by_username, get_users
 from src.models.users import User, UserCreate, UserRead
 from src.schemas.users import UserRegisterRequest
 

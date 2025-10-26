@@ -28,19 +28,19 @@ async def create_user(db: AsyncSession, user_create: UserCreate) -> User:
 async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
     """Get user by ID."""
     result = await db.execute(sqlmodel_select(User).where(User.id == user_id))
-    return result.scalar_one_or_none()
+    return result.scalar_one_or_none()  # type: ignore[no-any-return]
 
 
 async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
     """Get user by username."""
     result = await db.execute(sqlmodel_select(User).where(User.username == username))
-    return result.scalar_one_or_none()
+    return result.scalar_one_or_none()  # type: ignore[no-any-return]
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
     """Get user by email."""
     result = await db.execute(sqlmodel_select(User).where(User.email == email))
-    return result.scalar_one_or_none()
+    return result.scalar_one_or_none()  # type: ignore[no-any-return]
 
 
 async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[User]:
@@ -65,7 +65,7 @@ async def update_user(
 
     await db.commit()
     await db.refresh(user)
-    return user
+    return user  # type: ignore[no-any-return]
 
 
 async def delete_user(db: AsyncSession, user_id: int) -> bool:

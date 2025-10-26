@@ -35,13 +35,14 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Create JWT access token."""
+    """Create JWT access token with role information."""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now() + expires_delta
     else:
         expire = datetime.now() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
+    # role 정보는 data에 이미 포함되어 있어야 함 (호출하는 곳에서 전달)
     encoded_jwt = jwt.encode(
         to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
     )
@@ -62,7 +63,7 @@ def create_refresh_token(data: dict) -> str:
 async def get_user(db: AsyncSession, username: str) -> Optional[User]:
     """Get user by username."""
     result = await db.execute(sqlmodel_select(User).where(User.username == username))
-    return result.scalar_one_or_none()
+    return result.scalar_one_or_none()  # type: ignore[no-any-return]
 
 
 async def authenticate_user(
@@ -109,3 +110,68 @@ async def get_current_active_user(
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+# RBAC - Role-Based Access Control
+ROLE_HIERARCHY = {
+    "user": 0,
+    "moderator": 1,
+    "admin": 2,
+    "super_admin": 3,
+}
+
+
+def check_role_permission(user_role: str, required_role: str) -> bool:
+    """Check if user role has sufficient permission.
+
+    Args:
+        user_role: The role of the user
+        required_role: The minimum role required
+
+    Returns:
+        bool: True if user has sufficient permission, False otherwise
+    """
+    user_level = ROLE_HIERARCHY.get(user_role, 0)
+    required_level = ROLE_HIERARCHY.get(required_role, 0)
+    return user_level >= required_level
+
+
+async def verify_token_and_role(token: str, required_role: str) -> dict:
+    """Verify JWT token and check role permission.
+
+    Args:
+        token: JWT access token
+        required_role: Minimum role required
+
+    Returns:
+        dict: User information including role
+
+    Raises:
+        HTTPException: If token is invalid or insufficient permissions
+    """
+    try:
+        payload = jwt.decode(
+            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+        )
+        user_role = payload.get("role", "user")
+        user_id = payload.get("user_id")
+        username = payload.get("sub")
+
+        if not check_role_permission(user_role, required_role):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permissions. Required: {required_role}, Current: {user_role}",
+            )
+
+        return {
+            "allowed": True,
+            "user_id": user_id,
+            "username": username,
+            "role": user_role,
+        }
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from e
