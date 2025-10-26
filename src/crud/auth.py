@@ -63,7 +63,7 @@ def create_refresh_token(data: dict) -> str:
 async def get_user(db: AsyncSession, username: str) -> Optional[User]:
     """Get user by username."""
     result = await db.execute(sqlmodel_select(User).where(User.username == username))
-    return result.scalar_one_or_none()  # type: ignore[no-any-return]
+    return result.scalar_one_or_none()
 
 
 async def authenticate_user(

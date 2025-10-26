@@ -90,6 +90,7 @@ class TestAuthFunctions:
             email="auth@example.com",
             hashed_password=get_password_hash("authpassword123"),
             is_active=True,
+            role="user",
         )
         db_session.add(user)
         await db_session.commit()
@@ -138,6 +139,7 @@ class TestAuthFunctions:
             email="inactive@example.com",
             hashed_password=get_password_hash("inactivepassword123"),
             is_active=False,
+            role="user",
         )
         db_session.add(inactive_user)
         await db_session.commit()
@@ -205,6 +207,7 @@ class TestAuthFunctions:
             email="inactive2@example.com",
             hashed_password=get_password_hash("inactivepassword456"),
             is_active=False,
+            role="user",
         )
         db_session.add(inactive_user)
         await db_session.commit()

@@ -30,6 +30,7 @@ class TestUserManagement:
             full_name="Test User",
             is_active=True,
             is_superuser=False,
+            role="user",
         )
         db_session.add(user)
         await db_session.commit()
@@ -46,6 +47,7 @@ class TestUserManagement:
             full_name="Admin User",
             is_active=True,
             is_superuser=True,
+            role="super_admin",
         )
         db_session.add(superuser)
         await db_session.commit()
@@ -149,12 +151,14 @@ class TestUserManagement:
             email="user1@example.com",
             hashed_password=get_password_hash("password1"),
             is_active=True,
+            role="user",
         )
         user2 = User(
             username="user2",
             email="user2@example.com",
             hashed_password=get_password_hash("password2"),
             is_active=False,
+            role="user",
         )
         db_session.add_all([user1, user2])
         await db_session.commit()
@@ -173,6 +177,7 @@ class TestUserManagement:
             assert hasattr(user, "full_name")
             assert hasattr(user, "is_active")
             assert hasattr(user, "is_superuser")
+            assert hasattr(user, "role")
             assert hasattr(user, "created_at")
 
     async def test_get_users_with_pagination(self, db_session: AsyncSession) -> None:
@@ -183,6 +188,7 @@ class TestUserManagement:
                 username=f"user{i}",
                 email=f"user{i}@example.com",
                 hashed_password=get_password_hash(f"password{i}"),
+                role="user",
             )
             db_session.add(user)
         await db_session.commit()
@@ -202,6 +208,7 @@ class TestUserManagement:
             email="inactive@example.com",
             hashed_password=get_password_hash("inactivepassword"),
             is_active=False,
+            role="user",
         )
         db_session.add(inactive_user)
         await db_session.commit()
@@ -235,6 +242,7 @@ class TestUserManagement:
             email="active@example.com",
             hashed_password=get_password_hash("activepassword"),
             is_active=True,
+            role="user",
         )
         db_session.add(active_user)
         await db_session.commit()

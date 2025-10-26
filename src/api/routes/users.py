@@ -70,6 +70,7 @@ async def list_users(
             full_name=user.full_name,
             is_active=user.is_active,
             is_superuser=user.is_superuser,
+            role=user.role,
             created_at=user.created_at,
         )
         for user in users

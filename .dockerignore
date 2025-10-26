@@ -3,7 +3,6 @@
 .gitignore
 
 # Documentation
-README.md
 CHANGELOG.md
 SECURITY.md
 
@@ -70,4 +69,4 @@ Dockerfile
 # Local development
 scripts/
 tests/
-*.md
+# *.md - commented out as README.md is needed for package metadata

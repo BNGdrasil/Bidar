@@ -24,6 +24,7 @@ class TestAPIEndpoints:
             full_name="API Test User",
             is_active=True,
             is_superuser=False,
+            role="user",
         )
         db_session.add(user)
         await db_session.commit()

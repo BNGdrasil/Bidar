@@ -23,7 +23,7 @@ class UserBase(SQLModel):
     )  # user, moderator, admin, super_admin
 
 
-class User(UserBase, table=True):  # type: ignore[call-arg]
+class User(UserBase, table=True):
     """User database model."""
 
     __tablename__ = "users"
@@ -74,7 +74,7 @@ class APIKeyBase(SQLModel):
     is_active: bool = Field(default=True)
 
 
-class APIKey(APIKeyBase, table=True):  # type: ignore[call-arg]
+class APIKey(APIKeyBase, table=True):
     """API Key database model for service authentication."""
 
     __tablename__ = "api_keys"
