@@ -17,16 +17,20 @@ asyncpg==0.29.0
 authlib==1.6.2
     # via safety
 bandit==1.8.6
-bcrypt==4.3.0
-    # via passlib
+bcrypt==3.2.2
+    # via
+    #   bidar
+    #   passlib
 black==25.1.0
 certifi==2025.8.3
     # via
     #   httpcore
     #   httpx
     #   requests
-cffi==1.17.1 ; platform_python_implementation != 'PyPy'
-    # via cryptography
+cffi==1.17.1
+    # via
+    #   bcrypt
+    #   cryptography
 cfgv==3.4.0
     # via pre-commit
 charset-normalizer==3.4.3
@@ -59,7 +63,9 @@ dparse==0.6.4
 ecdsa==0.19.1
     # via python-jose
 fastapi==0.104.1
-    # via bidar
+    # via
+    #   bidar
+    #   prometheus-fastapi-instrumentator
 fastapi-fastkit==1.1.1
     # via bidar
 filelock==3.12.4
@@ -137,6 +143,10 @@ pluggy==1.6.0
     #   pytest
     #   pytest-cov
 pre-commit==4.3.0
+prometheus-client==0.23.1
+    # via prometheus-fastapi-instrumentator
+prometheus-fastapi-instrumentator==6.1.0
+    # via bidar
 psutil==6.0.0
     # via safety
 psycopg2-binary==2.9.9
@@ -147,7 +157,7 @@ pyasn1==0.6.1
     #   rsa
 pycodestyle==2.14.0
     # via flake8
-pycparser==2.22 ; platform_python_implementation != 'PyPy'
+pycparser==2.22
     # via cffi
 pydantic==2.5.0
     # via
