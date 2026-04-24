@@ -45,7 +45,7 @@ dependencies = [
 
 [project.urls]
 "Source" = "https://github.com/BNGdrasil/Bidar"
-"Homepage" = "https://api.bnbong.xyz"
+"Homepage" = "https://api.bnbong.com"
 "Bug Reports" = "https://github.com/BNGdrasil/Bidar/issues"
 
 [project.scripts]

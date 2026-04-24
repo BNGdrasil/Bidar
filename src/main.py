@@ -39,7 +39,7 @@ def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     app = FastAPI(
         title="Auth Server",
-        description="Authentication service for bnbong.xyz",
+        description="Authentication service for bnbong.com",
         version="1.0.0",
         docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
         redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,

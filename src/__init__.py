@@ -1,5 +1,5 @@
 # --------------------------------------------------------------------------
-# JWT Auth server for api.bnbong.xyz
+# JWT Auth server for api.bnbong.com
 #
 # @author bnbong bbbong9@gmail.com
 # --------------------------------------------------------------------------

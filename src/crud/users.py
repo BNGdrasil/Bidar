@@ -54,7 +54,7 @@ async def update_user(
 ) -> Optional[User]:
     """Update user."""
     result = await db.execute(sqlmodel_select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    user: Optional[User] = result.scalar_one_or_none()
 
     if not user:
         return None
