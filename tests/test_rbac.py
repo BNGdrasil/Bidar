@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.crud.auth import (
     check_role_permission,
     create_access_token,
+    create_refresh_token,
     get_password_hash,
     verify_token_and_role,
 )
@@ -45,95 +46,140 @@ class TestRBACFunctions:
         assert check_role_permission("user", "admin") is False
 
     def test_check_role_permission_moderator_vs_admin(self) -> None:
-        """Test role permission check: moderator accessing admin resource (should fail)."""
+        """Role check: moderator accessing an admin resource (should fail)."""
         assert check_role_permission("moderator", "admin") is False
 
     def test_check_role_permission_user_vs_moderator(self) -> None:
-        """Test role permission check: user accessing moderator resource (should fail)."""
+        """Role check: user accessing a moderator resource (should fail)."""
         assert check_role_permission("user", "moderator") is False
 
     def test_check_role_permission_invalid_role(self) -> None:
-        """Test role permission check with invalid role."""
-        # Invalid roles should default to level 0 (same as user)
-        # So invalid_role (level 0) can access user (level 0) resources
-        assert check_role_permission("invalid_role", "user") is True
-        # But invalid_role (level 0) cannot access higher level resources
+        """Unknown roles are rejected on both sides instead of defaulting."""
+        assert check_role_permission("invalid_role", "user") is False
         assert check_role_permission("invalid_role", "admin") is False
-        # User (level 0) can access invalid_role (level 0) resources
-        assert check_role_permission("user", "invalid_role") is True
+        assert check_role_permission("user", "invalid_role") is False
 
-    async def test_verify_token_and_role_success(self) -> None:
-        """Test token and role verification with sufficient permissions."""
-        # Create token with admin role
-        token = create_access_token({"sub": "adminuser", "user_id": 1, "role": "admin"})
+    @pytest_asyncio.fixture
+    async def rbac_users(self, db_session: AsyncSession) -> dict:
+        """Create users covering every role level."""
+        users = {}
+        for index, role in enumerate(
+            ["user", "moderator", "admin", "super_admin"], start=1
+        ):
+            user = User(
+                username=f"rbac_{role}",
+                email=f"rbac_{role}@example.com",
+                hashed_password=get_password_hash("rbacpassword123"),
+                is_active=True,
+                is_superuser=role == "super_admin",
+                role=role,
+            )
+            db_session.add(user)
+            users[role] = user
+        await db_session.commit()
+        for user in users.values():
+            await db_session.refresh(user)
+        return users
 
-        # Verify with moderator requirement (admin >= moderator)
-        result = await verify_token_and_role(token, "moderator")
-
-        assert result["allowed"] is True
-        assert result["user_id"] == 1
-        assert result["username"] == "adminuser"
-        assert result["role"] == "admin"
-
-    async def test_verify_token_and_role_insufficient_permissions(self) -> None:
-        """Test token and role verification with insufficient permissions."""
-        # Create token with user role
-        token = create_access_token(
-            {"sub": "regularuser", "user_id": 2, "role": "user"}
+    @staticmethod
+    def _token(user: User) -> str:
+        return create_access_token(
+            {"sub": user.username, "user_id": user.id, "role": user.role}
         )
 
-        # Try to verify with admin requirement (user < admin)
+    async def test_verify_token_and_role_success(
+        self, db_session: AsyncSession, rbac_users: dict
+    ) -> None:
+        """Test token and role verification with sufficient permissions."""
+        admin = rbac_users["admin"]
+        result = await verify_token_and_role(
+            self._token(admin), "moderator", db_session
+        )
+
+        assert result["allowed"] is True
+        assert result["user_id"] == admin.id
+        assert result["username"] == admin.username
+        assert result["role"] == "admin"
+
+    async def test_verify_token_and_role_insufficient_permissions(
+        self, db_session: AsyncSession, rbac_users: dict
+    ) -> None:
+        """Test token and role verification with insufficient permissions."""
         with pytest.raises(HTTPException) as exc_info:
-            await verify_token_and_role(token, "admin")
+            await verify_token_and_role(
+                self._token(rbac_users["user"]), "admin", db_session
+            )
 
         assert exc_info.value.status_code == 403
         assert "Insufficient permissions" in str(exc_info.value.detail)
 
-    async def test_verify_token_and_role_invalid_token(self) -> None:
-        """Test token and role verification with invalid token."""
-        # Use an invalid token
+    async def test_verify_token_and_role_invalid_token(
+        self, db_session: AsyncSession
+    ) -> None:
+        """Test token and role verification with an invalid token."""
         with pytest.raises(HTTPException) as exc_info:
-            await verify_token_and_role("invalid_token", "user")
+            await verify_token_and_role("invalid_token", "user", db_session)
 
         assert exc_info.value.status_code == 401
         assert "Could not validate credentials" in str(exc_info.value.detail)
 
-    async def test_verify_token_and_role_super_admin(self) -> None:
+    async def test_verify_token_and_role_super_admin(
+        self, db_session: AsyncSession, rbac_users: dict
+    ) -> None:
         """Test token and role verification with super_admin."""
-        # Create token with super_admin role
-        token = create_access_token(
-            {"sub": "superadmin", "user_id": 3, "role": "super_admin"}
+        result = await verify_token_and_role(
+            self._token(rbac_users["super_admin"]), "admin", db_session
         )
-
-        # Verify with admin requirement (super_admin >= admin)
-        result = await verify_token_and_role(token, "admin")
 
         assert result["allowed"] is True
         assert result["role"] == "super_admin"
 
-    async def test_verify_token_and_role_default_role(self) -> None:
-        """Test token without explicit role defaults to 'user'."""
-        # Create token without role
-        token = create_access_token({"sub": "noroluser", "user_id": 4})
-
-        # Verify with user requirement
-        result = await verify_token_and_role(token, "user")
-
-        assert result["allowed"] is True
-        assert result["role"] == "user"
-
-    async def test_verify_token_and_role_same_level(self) -> None:
-        """Test token and role verification with same permission level."""
-        # Create token with moderator role
-        token = create_access_token(
-            {"sub": "moduser", "user_id": 5, "role": "moderator"}
+    async def test_verify_token_and_role_same_level(
+        self, db_session: AsyncSession, rbac_users: dict
+    ) -> None:
+        """Test token and role verification with the same permission level."""
+        result = await verify_token_and_role(
+            self._token(rbac_users["moderator"]), "moderator", db_session
         )
-
-        # Verify with moderator requirement (moderator == moderator)
-        result = await verify_token_and_role(token, "moderator")
 
         assert result["allowed"] is True
         assert result["role"] == "moderator"
+
+    async def test_verify_token_and_role_missing_claims(
+        self, db_session: AsyncSession, rbac_users: dict
+    ) -> None:
+        """A token without the required claims is rejected."""
+        token = create_access_token({"sub": rbac_users["admin"].username})
+
+        with pytest.raises(HTTPException) as exc_info:
+            await verify_token_and_role(token, "user", db_session)
+
+        assert exc_info.value.status_code == 401
+
+    async def test_verify_token_and_role_rejects_refresh_token(
+        self, db_session: AsyncSession, rbac_users: dict
+    ) -> None:
+        """SEC-03: a refresh token cannot be used for permission checks."""
+        admin = rbac_users["super_admin"]
+        token = create_refresh_token(
+            {"sub": admin.username, "user_id": admin.id, "role": admin.role}
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await verify_token_and_role(token, "super_admin", db_session)
+
+        assert exc_info.value.status_code == 401
+
+    async def test_verify_token_and_role_unknown_required_role(
+        self, db_session: AsyncSession, rbac_users: dict
+    ) -> None:
+        """An unknown required role is refused instead of silently allowed."""
+        with pytest.raises(HTTPException) as exc_info:
+            await verify_token_and_role(
+                self._token(rbac_users["super_admin"]), "root", db_session
+            )
+
+        assert exc_info.value.status_code == 403
 
 
 class TestRBACEndpoints:
@@ -208,8 +254,8 @@ class TestRBACEndpoints:
         assert len(token) > 0
 
     async def test_token_contains_role_information(self, test_users: dict) -> None:
-        """Test that tokens contain role information."""
-        from jose import jwt
+        """Test that tokens contain role, type and UTC aware timestamps."""
+        import jwt
 
         from src.core.config import settings
 
@@ -227,3 +273,5 @@ class TestRBACEndpoints:
         assert payload["sub"] == admin.username
         assert payload["user_id"] == admin.id
         assert payload["role"] == admin.role
+        assert payload["type"] == "access"
+        assert payload["exp"] > payload["iat"]

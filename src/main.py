@@ -49,13 +49,15 @@ def create_app() -> FastAPI:
     # Add middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_origins=list(settings.ALLOWED_ORIGINS),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS)
+    app.add_middleware(
+        TrustedHostMiddleware, allowed_hosts=list(settings.ALLOWED_HOSTS)
+    )
 
     # Add routes
     app.include_router(api_router)
@@ -91,11 +93,22 @@ def create_app() -> FastAPI:
 
 app = create_app()
 
-if __name__ == "__main__":
+
+def main() -> None:
+    """Console script entry point: run the ASGI server."""
     uvicorn.run(
         "src.main:app",
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.ENVIRONMENT == "development",
         log_level=settings.LOG_LEVEL.lower(),
+        # Without this, request.client.host is the reverse proxy address for
+        # every caller and the login limiter treats all users as one client.
+        # Only proxies listed in FORWARDED_ALLOW_IPS are believed.
+        proxy_headers=True,
+        forwarded_allow_ips=settings.FORWARDED_ALLOW_IPS,
     )
+
+
+if __name__ == "__main__":
+    main()

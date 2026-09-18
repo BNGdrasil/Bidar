@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.core.database import get_db
+from src.core.ratelimit import login_limiter
 from src.main import app
 
 # Test database URL (in-memory SQLite for testing)
@@ -31,6 +32,14 @@ TestingSessionLocal = sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )  # type: ignore
+
+
+@pytest.fixture(autouse=True)
+def reset_login_limiter() -> Generator[None, None, None]:
+    """Keep the in-process login limiter from leaking between tests."""
+    login_limiter.reset()
+    yield
+    login_limiter.reset()
 
 
 @pytest.fixture(scope="session")
@@ -92,5 +101,5 @@ def test_superuser_data() -> dict:
         "email": "admin@example.com",
         "password": "adminpassword123",
         "full_name": "Admin User",
-        "is_superuser": True,
+        "role": "super_admin",
     }

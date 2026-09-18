@@ -48,8 +48,8 @@ class TestAPIEndpoints:
         assert data["version"] == "1.0.0"
         assert "docs" in data
 
-    def test_register_user_success(self, client: TestClient) -> None:
-        """Test successful user registration via API."""
+    def test_public_registration_is_closed(self, client: TestClient) -> None:
+        """SEC-01: the former public registration endpoint no longer exists."""
         user_data = {
             "username": "newapiuser",
             "email": "newapi@example.com",
@@ -58,12 +58,7 @@ class TestAPIEndpoints:
         }
 
         response = client.post("/users/register", json=user_data)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["message"] == "User registered successfully"
-        assert "user_id" in data
-        assert data["username"] == user_data["username"]
-        assert data["email"] == user_data["email"]
+        assert response.status_code == 404
 
     def test_login_success(self, client: TestClient, test_user: User) -> None:
         """Test successful login via API."""

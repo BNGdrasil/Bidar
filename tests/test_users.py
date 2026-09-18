@@ -13,8 +13,7 @@ from src.crud.users import activate_user as crud_activate_user
 from src.crud.users import create_user
 from src.crud.users import deactivate_user as crud_deactivate_user
 from src.crud.users import get_users
-from src.models.users import User
-from src.schemas.users import UserRegisterRequest
+from src.models.users import User, UserCreate
 
 
 class TestUserManagement:
@@ -63,7 +62,7 @@ class TestUserManagement:
             "full_name": "New User",
         }
 
-        user_request = UserRegisterRequest(
+        user_request = UserCreate(
             username=str(user_data["username"]),
             email=str(user_data["email"]),
             password=str(user_data["password"]),
@@ -94,7 +93,7 @@ class TestUserManagement:
         self, db_session: AsyncSession, test_user: User
     ) -> None:
         """Test user creation with duplicate username."""
-        user_request = UserRegisterRequest(
+        user_request = UserCreate(
             username=test_user.username,  # Same username as existing user
             email="different@example.com",
             password="differentpassword123",
@@ -108,7 +107,7 @@ class TestUserManagement:
         self, db_session: AsyncSession, test_user: User
     ) -> None:
         """Test user creation with duplicate email."""
-        user_request = UserRegisterRequest(
+        user_request = UserCreate(
             username="differentuser",
             email=test_user.email,  # Same email as existing user
             password="differentpassword123",
@@ -122,10 +121,10 @@ class TestUserManagement:
         self, db_session: AsyncSession
     ) -> None:
         """Test user creation without full name."""
-        user_request = UserRegisterRequest(
+        user_request = UserCreate(
             username="nofullname",
             email="nofullname@example.com",
-            password="password123",
+            password="password123!",
         )
         result = await create_user(db_session, user_request)
 
@@ -215,7 +214,9 @@ class TestUserManagement:
         await db_session.refresh(inactive_user)
 
         # Activate user
-        result = await crud_activate_user(db_session, int(inactive_user.id))  # type: ignore
+        result = await crud_activate_user(
+            db_session, int(inactive_user.id)  # type: ignore[arg-type]
+        )
 
         assert result is not None
         assert result.is_active is True
@@ -249,7 +250,9 @@ class TestUserManagement:
         await db_session.refresh(active_user)
 
         # Deactivate user
-        result = await crud_deactivate_user(db_session, int(active_user.id))  # type: ignore
+        result = await crud_deactivate_user(
+            db_session, int(active_user.id)  # type: ignore[arg-type]
+        )
 
         assert result is not None
         assert result.is_active is False
@@ -270,7 +273,7 @@ class TestUserManagement:
 
     async def test_create_user_password_hashing(self, db_session: AsyncSession) -> None:
         """Test that user creation properly hashes passwords."""
-        user_request = UserRegisterRequest(
+        user_request = UserCreate(
             username="passwordtestuser",
             email="passwordtest@example.com",
             password="plaintextpassword",
@@ -291,7 +294,7 @@ class TestUserManagement:
             "password": "timestamppassword",
         }
 
-        user_request = UserRegisterRequest(
+        user_request = UserCreate(
             username=user_data["username"],
             email=user_data["email"],
             password=user_data["password"],

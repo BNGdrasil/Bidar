@@ -16,8 +16,15 @@ if [ ! -d ".venv" ]; then
     uv sync
 fi
 
-# Run tests with coverage
+# Run tests with coverage.
+# The test environment is set explicitly so that a stray DEBUG/ENVIRONMENT in
+# the parent shell or a local .env cannot change what is under test.
 echo "🔍 Running tests with coverage..."
+ENVIRONMENT=test \
+DEBUG=false \
+DATABASE_URL=sqlite+aiosqlite:///:memory: \
+JWT_SECRET_KEY=bidar-local-test-signing-key-not-for-production \
+ALLOWED_HOSTS='*' \
 uv run pytest tests/ \
     --cov=src \
     --cov-report=term-missing \

@@ -6,44 +6,22 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: test_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
+        # Must match `requires-python` in pyproject.toml.
+        python-version: ["3.12", "3.13"]
 
     steps:
     - uses: actions/checkout@v5
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
 
     - name: Install uv
       uses: astral-sh/setup-uv@v6
@@ -51,16 +29,23 @@ jobs:
         version: latest
 
     - name: Install dependencies
-      run: uv sync --group dev
+      run: uv sync --group dev --frozen --python "${{ matrix.python-version }}"
+
+    - name: Verify interpreter version
+      # uv can provision its own interpreter, so confirm the environment really
+      # runs the version named by the matrix entry.
+      run: |
+        uv run python -V
+        uv run python -c "import sys; assert sys.version_info[:2] == tuple(int(p) for p in '${{ matrix.python-version }}'.split('.')), sys.version"
 
     - name: Run tests
       env:
-        DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
-        REDIS_URL: redis://localhost:6379/1
-        JWT_SECRET_KEY: test-secret-key
         ENVIRONMENT: test
-      run: |
-        uv run pytest --cov=src --cov-report=xml --cov-report=html
+        DEBUG: "false"
+        DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+        JWT_SECRET_KEY: bidar-ci-signing-key-not-for-production
+        ALLOWED_HOSTS: "*"
+      run: uv run pytest --cov=src --cov-report=xml --cov-report=html
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
@@ -78,15 +63,12 @@ jobs:
           htmlcov/
         retention-days: 30
 
-  security:
+  lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - uses: actions/checkout@v5
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v6
@@ -94,19 +76,46 @@ jobs:
         version: latest
 
     - name: Install dependencies
-      run: uv sync --group dev
+      run: uv sync --group dev --frozen --python 3.12
 
-    - name: Run security checks
+    - name: Check formatting
       run: |
-        uv run bandit -r src -f json -o bandit-report.json || true
-        uv run safety check --json --output safety-report.json || true
+        uv run black --check .
+        uv run isort --check-only .
 
-    - name: Upload security reports
-      uses: actions/upload-artifact@v4
-      if: always()
+    - name: Lint
+      run: uv run flake8 src tests
+
+    - name: Type check
+      run: uv run mypy src
+
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
       with:
-        name: security-reports
-        path: |
-          bandit-report.json
-          safety-report.json
-        retention-days: 30
+        version: latest
+
+    - name: Install dependencies
+      run: uv sync --group dev --frozen --python 3.12
+
+    - name: Run bandit
+      # No `|| true`: a new finding fails the job.
+      run: uv run bandit -r src -c pyproject.toml
+
+    - name: Audit dependencies
+      # Audits the locked environment. --skip-editable only skips the project
+      # itself; a known advisory in any dependency fails the job.
+      run: uv run pip-audit --skip-editable
+
+    - name: Check that the exported requirements match the lock
+      # The Dockerfile installs requirements.txt, so it must not drift from
+      # uv.lock.
+      run: |
+        uv export --no-hashes --no-dev --no-emit-project -o requirements.txt
+        git diff --exit-code -- requirements.txt

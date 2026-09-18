@@ -7,7 +7,6 @@ from datetime import timedelta
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.crud.auth import (
@@ -60,7 +59,7 @@ class TestAuthFunctions:
 
     def test_create_access_token(self) -> None:
         """Test access token creation."""
-        data = {"sub": "testuser", "role": "user"}
+        data = {"sub": "testuser", "user_id": 1, "role": "user"}
 
         # Test with default expiration
         token = create_access_token(data)
@@ -76,7 +75,7 @@ class TestAuthFunctions:
 
     def test_create_refresh_token(self) -> None:
         """Test refresh token creation."""
-        data = {"sub": "testuser"}
+        data = {"sub": "testuser", "user_id": 1}
 
         token = create_refresh_token(data)
         assert isinstance(token, str)
@@ -156,16 +155,10 @@ class TestAuthFunctions:
         self, db_session: AsyncSession, test_user: User
     ) -> None:
         """Test getting current user with valid token."""
-        from fastapi import Depends
-
-        from src.crud.auth import oauth2_scheme
-
         # Create a valid token
-        token = create_access_token({"sub": test_user.username})
-
-        # Mock the token dependency
-        async def mock_token() -> str:
-            return token
+        token = create_access_token(
+            {"sub": test_user.username, "user_id": test_user.id}
+        )
 
         # Test get_current_user
         user = await get_current_user(token=token, db=db_session)
@@ -176,8 +169,6 @@ class TestAuthFunctions:
         self, db_session: AsyncSession
     ) -> None:
         """Test getting current user with invalid token."""
-        from src.crud.auth import oauth2_scheme
-
         # Test with invalid token
         with pytest.raises(Exception):  # Should raise HTTPException
             await get_current_user(token="invalid_token", db=db_session)
@@ -187,7 +178,9 @@ class TestAuthFunctions:
     ) -> None:
         """Test getting current active user with active user."""
         # Create a valid token
-        token = create_access_token({"sub": test_user.username})
+        token = create_access_token(
+            {"sub": test_user.username, "user_id": test_user.id}
+        )
 
         # Test get_current_active_user
         user = await get_current_active_user(
@@ -234,7 +227,7 @@ class TestAuthFunctions:
 
     async def test_token_expiration(self) -> None:
         """Test token expiration handling."""
-        data = {"sub": "testuser"}
+        data = {"sub": "testuser", "user_id": 1}
 
         # Create token with very short expiration
         short_expiry = timedelta(seconds=1)
@@ -246,11 +239,11 @@ class TestAuthFunctions:
 
     async def test_refresh_token_with_type(self) -> None:
         """Test refresh token includes type field."""
-        data = {"sub": "testuser"}
+        data = {"sub": "testuser", "user_id": 1}
 
         token = create_refresh_token(data)
         assert isinstance(token, str)
         assert len(token) > 0
 
-        # Note: In a real test, you might decode the token to verify the "type": "refresh" field
-        # but for now we just verify the token is created successfully
+        # The "type": "refresh" claim itself is asserted in
+        # tests/test_security_regressions.py.

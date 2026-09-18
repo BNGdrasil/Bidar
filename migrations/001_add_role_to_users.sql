@@ -7,7 +7,10 @@
 ALTER TABLE users
 ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
 
--- Add check constraint for valid roles
+-- Add check constraint for valid roles.
+-- Dropped first so that re-running this file does not fail on an existing
+-- constraint; 002 repeats the same guard.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS check_user_role;
 ALTER TABLE users
 ADD CONSTRAINT check_user_role
 CHECK (role IN ('user', 'moderator', 'admin', 'super_admin'));

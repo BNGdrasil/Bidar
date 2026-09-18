@@ -110,7 +110,7 @@ ipython_config.py
 .pdm.toml
 
 # uv
-uv.lock
+# uv.lock is tracked: it pins the exact runtime and dev dependency set.
 
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/

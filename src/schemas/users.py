@@ -9,14 +9,15 @@ from src.models.users import (
     APIKeyCreate,
     APIKeyRead,
     User,
+    UserAdminUpdate,
     UserBase,
     UserCreate,
     UserRead,
+    UserRegisterRequest,
     UserUpdate,
 )
 
 # Alias for compatibility
-UserRegisterRequest = UserCreate
 UserResponse = UserRead
 
 __all__ = [
@@ -25,6 +26,7 @@ __all__ = [
     "UserCreate",
     "UserRead",
     "UserUpdate",
+    "UserAdminUpdate",
     "UserRegisterRequest",
     "UserResponse",
     "APIKeyBase",

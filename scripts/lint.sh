@@ -8,4 +8,5 @@ isort --sp "${base_dir}/pyproject.toml" --check .
 isort --sp "${base_dir}/pyproject.toml" .
 black --config "${base_dir}/pyproject.toml" .
 
+flake8 src tests
 mypy --config-file "${base_dir}/pyproject.toml" src

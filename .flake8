@@ -1,0 +1,17 @@
+[flake8]
+# Aligned with black: 88 columns, and E203/W503 are black-compatible.
+max-line-length = 88
+# D100/D104: module and package docstrings are replaced by the file header
+# comments used throughout this project.
+extend-ignore = E203, W503, D100, D104
+exclude =
+    .git,
+    .venv,
+    __pycache__,
+    build,
+    dist,
+    htmlcov,
+    migrations
+per-file-ignores =
+    tests/*:D101,D102,D103
+    scripts/test-login.py:E402,F401,F541,D401
