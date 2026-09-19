@@ -10,26 +10,30 @@ Bidar 인증 서버의 PostgreSQL 스키마 변경 스크립트를 모아 둔 �
 
 ## 실행 방법
 
+워크스테이션에서 마이그레이션 파일을 먼저 VM3의 `/tmp`로 옮깁니다. `postgres` 사용자는
+저장소 체크아웃 경로나 `ubuntu` 홈 디렉터리를 읽을 권한이 없는 경우가 많으므로, 항상
+`/tmp`에 복사한 파일을 대상으로 실행합니다.
+
+```bash
+scp migrations/002_preflight.sql migrations/002_align_role_and_superuser.sql \
+  ubuntu@<VM3_HOST>:/tmp/
+```
+
 VM3에 접속한 뒤 `postgres` 사용자로 실행합니다. `ON_ERROR_STOP=1`을 반드시 붙여서
 중간 구문이 실패하면 즉시 중단되도록 합니다.
 
 ```bash
+cd /tmp
+
 # 1) 읽기 전용 감사
-sudo -u postgres psql -d bngdrasil -v ON_ERROR_STOP=1 \
-  -f migrations/002_preflight.sql
+sudo -u postgres psql -d bngdrasil -v ON_ERROR_STOP=1 -f /tmp/002_preflight.sql
 
 # 2) 출력을 확인한 뒤 적용
-sudo -u postgres psql -d bngdrasil -v ON_ERROR_STOP=1 \
-  -f migrations/002_align_role_and_superuser.sql
+sudo -u postgres psql -d bngdrasil -v ON_ERROR_STOP=1 -f /tmp/002_align_role_and_superuser.sql
 ```
 
-워크스테이션에서 파일만 전송하는 경우는 다음과 같습니다.
-
-```bash
-scp migrations/002_align_role_and_superuser.sql ubuntu@<VM3_HOST>:/tmp/
-ssh ubuntu@<VM3_HOST> 'sudo -u postgres psql -d bngdrasil -v ON_ERROR_STOP=1 \
-  -f /tmp/002_align_role_and_superuser.sql'
-```
+> `pg_dump`와 `psql -f`는 모두 셸에서 직접 실행하는 명령입니다. `psql` 프롬프트에 접속한
+> 상태에서 입력하는 것이 아니므로 혼동하지 않도록 주의합니다.
 
 저장소의 `scripts/run-migration.sh`는 위 명령을 감싼 래퍼이며 VM3에서 실행합니다.
 
@@ -45,9 +49,14 @@ ssh ubuntu@<VM3_HOST> 'sudo -u postgres psql -d bngdrasil -v ON_ERROR_STOP=1 \
 
 ## 적용 전 준비
 
-1. 적용 직전에 논리 백업을 남깁니다.
+1. 적용 직전에 논리 백업을 남깁니다. `postgres` 사용자는 root 소유인 `/var/backups`에 직접
+   쓸 권한이 없으므로, 덤프 자체는 `postgres` 권한으로 표준출력에 생성하고 파일 쓰기만
+   `sudo tee`로 분리합니다.
    ```bash
-   sudo -u postgres pg_dump -Fc -d bngdrasil -f /var/backups/bngdrasil-$(date +%F).dump
+   cd /tmp
+   sudo -u postgres pg_dump -Fc -d bngdrasil | sudo tee /var/backups/bngdrasil-pre-002-$(date +%F).dump > /dev/null
+   sudo chmod 600 /var/backups/bngdrasil-pre-002-*.dump
+   sudo ls -la /var/backups/bngdrasil-pre-002-*.dump
    ```
 2. 001을 먼저 적용합니다.
 3. **preflight를 실행하고 출력을 읽습니다.** 002는 값을 되돌리는 자동 롤백이 없으므로
@@ -114,6 +123,13 @@ DROP INDEX IF EXISTS idx_users_role;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS check_user_role;
 ALTER TABLE users DROP COLUMN IF EXISTS role;
 ```
+
+## 적용 기록
+
+2026-09-19에 운영 VM3에서 001과 preflight, 002를 실제로 적용했습니다. preflight 결과
+`role`과 `is_superuser`가 어긋난 행은 0건이었고, 002 적용 후 남은 활성 super_admin은
+1명이었습니다. 002가 `RAISE NOTICE`로 출력한 승격·정정·비활성화 변경 건수는 0건으로,
+데이터가 이미 정합한 상태였습니다.
 
 ## 주의
 
