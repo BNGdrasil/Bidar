@@ -70,9 +70,15 @@ class Settings(BaseSettings):
     start with missing or example secrets.
     """
 
+    # env_ignore_empty makes an empty environment value mean "not set", so a
+    # compose file that expands an unset variable into ENABLE_METRICS= or
+    # MAX_REQUEST_BODY_BYTES= falls back to the default instead of failing to
+    # parse. The production checks below still refuse an empty required value,
+    # because "not set" reaches them as the empty default.
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
+        env_ignore_empty=True,
     )
 
     SECRET_KEY: str = secrets.token_urlsafe(32)

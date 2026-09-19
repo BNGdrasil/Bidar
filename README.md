@@ -78,6 +78,22 @@ uv run python -m src.cli create-admin --username admin --email admin@example.com
 
 `--role` 옵션으로 `user`·`moderator`·`admin`·`super_admin` 중 하나를 지정할 수 있으며, 생략하면 `super_admin`이 기본값입니다. `--non-interactive`를 지정하면 환경 변수가 없을 때 프롬프트 대신 즉시 오류로 종료합니다.
 
+### 비밀번호 재설정
+
+기존 계정의 비밀번호를 잊어버렸다면 `reset-password` 서브커맨드로 새 비밀번호를 지정합니다. 이 명령도 비밀번호를 명령줄 인자로 받지 않으며, 환경 변수 `BIDAR_NEW_PASSWORD` 또는 대화형 프롬프트로만 입력받습니다. 프롬프트는 오타를 막기 위해 같은 값을 두 번 입력받아 확인합니다.
+
+```bash
+# 환경 변수로 새 비밀번호를 전달하는 방식
+BIDAR_NEW_PASSWORD='...' uv run python -m src.cli reset-password --username admin
+
+# 운영 환경에서는 인증 서버 컨테이너 안에서 실행합니다
+sudo docker exec -it vm2-auth python -m src.cli reset-password --username bnbong
+```
+
+새 비밀번호는 계정 생성과 동일한 규칙을 따릅니다. 즉 최소 12자 이상이어야 하고, UTF-8로 인코딩했을 때 72바이트를 넘으면 bcrypt가 처리할 수 없으므로 거부됩니다. 지정한 사용자가 존재하지 않으면 종료 코드 1로 실패하며, 비활성 상태인 계정이라면 경고만 출력하고 비밀번호를 그대로 변경합니다. 변경에 성공하면 `Password updated for <username>`을 출력합니다.
+
+다만 이미 발급된 액세스 토큰과 리프레시 토큰은 비밀번호를 재설정해도 무효화되지 않습니다. 이 서비스는 발급한 토큰을 서버 측에서 폐기하는 저장소를 두고 있지 않기 때문에, 기존 토큰은 만료 시각까지 그대로 사용할 수 있습니다.
+
 ## 로컬 개발과 테스트
 
 ```bash

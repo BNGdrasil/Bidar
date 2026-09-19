@@ -198,3 +198,52 @@ class TestProductionSecretValidation:
         """Development and test keep working with a short explicit key."""
         settings = build_settings(ENVIRONMENT="test", JWT_SECRET_KEY="short-test-key")
         assert settings.JWT_SECRET_KEY == "short-test-key"
+
+
+class TestEmptyEnvironmentValues:
+    """Compose expands an unset variable into an empty string.
+
+    ``env_ignore_empty`` turns that empty string back into "not set" so the
+    declared default applies, instead of failing the type parser at startup.
+    """
+
+    def test_empty_integer_and_boolean_values_use_defaults(self) -> None:
+        """Empty numeric and boolean values fall back to the defaults."""
+        settings = build_settings(
+            DEBUG="",
+            LOGIN_RATE_LIMIT_PER_MINUTE="",
+            ACCESS_TOKEN_EXPIRE_MINUTES="",
+            PORT="",
+        )
+        assert settings.DEBUG is False
+        assert settings.LOGIN_RATE_LIMIT_PER_MINUTE == 10
+        assert settings.ACCESS_TOKEN_EXPIRE_MINUTES == 30
+        assert settings.PORT == 8001
+
+    def test_empty_log_level_uses_default(self) -> None:
+        """An empty string value does not overwrite a string default."""
+        assert build_settings(LOG_LEVEL="").LOG_LEVEL == "INFO"
+
+    def test_production_still_rejects_empty_allowed_hosts(self) -> None:
+        """An empty required list is "not set" and production refuses it."""
+        with pytest.raises(ValidationError) as exc_info:
+            build_settings(
+                ENVIRONMENT="production",
+                JWT_SECRET_KEY=STRONG_TEST_KEY,
+                DATABASE_URL="postgresql://u:p@db:5432/bngdrasil",
+                ALLOWED_HOSTS="",
+                ALLOWED_ORIGINS="https://admin.bnbong.com",
+            )
+        assert "ALLOWED_HOSTS" in str(exc_info.value)
+
+    def test_production_still_rejects_empty_secrets_and_database_url(self) -> None:
+        """Empty JWT_SECRET_KEY and DATABASE_URL keep failing in production."""
+        with pytest.raises(ValidationError) as exc_info:
+            build_settings(
+                ENVIRONMENT="production",
+                JWT_SECRET_KEY="",
+                DATABASE_URL="",
+                ALLOWED_HOSTS="api.bnbong.com",
+                ALLOWED_ORIGINS="https://admin.bnbong.com",
+            )
+        assert "JWT_SECRET_KEY" in str(exc_info.value)

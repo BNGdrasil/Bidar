@@ -3,10 +3,12 @@
 #
 # Usage:
 #   python -m src.cli create-admin --username admin --email admin@example.com
+#   python -m src.cli reset-password --username admin
 #
 # The password is never accepted as a command line argument. It is read from
-# the BIDAR_ADMIN_PASSWORD environment variable or prompted for interactively,
-# so it does not end up in the shell history or in the process table.
+# an environment variable (BIDAR_ADMIN_PASSWORD for create-admin,
+# BIDAR_NEW_PASSWORD for reset-password) or prompted for interactively, so it
+# does not end up in the shell history or in the process table.
 #
 # @author bnbong bbbong9@gmail.com
 # --------------------------------------------------------------------------
@@ -26,19 +28,21 @@ from src.core.passwords import (
 from src.core.roles import SUPER_ADMIN_ROLE, VALID_ROLES
 from src.models.users import UserCreate
 
-# bandit B105 (false positive): the name of the variable, never a password value.
+# bandit B105 (false positives): these are the names of the variables, never
+# a password value.
 PASSWORD_ENV_VAR = "BIDAR_ADMIN_PASSWORD"  # nosec B105
+NEW_PASSWORD_ENV_VAR = "BIDAR_NEW_PASSWORD"  # nosec B105
 
 
-def _read_password(non_interactive: bool) -> str:
+def _read_password(non_interactive: bool, env_var: str = PASSWORD_ENV_VAR) -> str:
     """Read the new account password from the environment or a prompt."""
-    password = os.environ.get(PASSWORD_ENV_VAR)
+    password = os.environ.get(env_var)
     if password:
         return password
 
     if non_interactive or not sys.stdin.isatty():
         raise SystemExit(
-            f"{PASSWORD_ENV_VAR} is not set and no interactive terminal is "
+            f"{env_var} is not set and no interactive terminal is "
             "available. Export the variable and retry."
         )
 
@@ -100,6 +104,35 @@ async def _create_admin(
         await engine.dispose()
 
 
+async def _reset_password(username: str, password: str) -> int:
+    from src.core.database import AsyncSessionLocal, engine, init_db
+    from src.crud.users import get_user_by_username, set_user_password
+
+    await init_db()
+    try:
+        async with AsyncSessionLocal() as db:
+            user = await get_user_by_username(db, username)
+            if user is None:
+                print(f"User '{username}' does not exist.", file=sys.stderr)
+                return 1
+            if not user.is_active:
+                # The reset is still useful: an operator usually reactivates
+                # the account right after, and refusing here would leave no
+                # way to fix a locked out administrator.
+                print(
+                    f"Warning: user '{username}' is inactive; "
+                    "the new password will not allow a login until the "
+                    "account is activated.",
+                    file=sys.stderr,
+                )
+
+            await set_user_password(db, user, password)
+            print(f"Password updated for {username}")
+            return 0
+    finally:
+        await engine.dispose()
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the command line parser."""
     parser = argparse.ArgumentParser(prog="bidar", description="Bidar admin CLI")
@@ -122,6 +155,23 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=f"Fail instead of prompting when {PASSWORD_ENV_VAR} is unset",
     )
+
+    reset_password = subparsers.add_parser(
+        "reset-password",
+        help="Set a new password for an existing account",
+        description=(
+            "Set a new password for an existing account. The password is read "
+            f"from {NEW_PASSWORD_ENV_VAR} or from an interactive prompt, never "
+            "from the command line. Tokens issued before the reset stay valid "
+            "until they expire, because the service keeps no revocation store."
+        ),
+    )
+    reset_password.add_argument("--username", required=True)
+    reset_password.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help=f"Fail instead of prompting when {NEW_PASSWORD_ENV_VAR} is unset",
+    )
     return parser
 
 
@@ -141,6 +191,11 @@ def main(argv: Optional[list] = None) -> int:
                 password=password,
             )
         )
+
+    if args.command == "reset-password":
+        password = _read_password(args.non_interactive, NEW_PASSWORD_ENV_VAR)
+        _validate_password(password)
+        return asyncio.run(_reset_password(username=args.username, password=password))
 
     return 1
 

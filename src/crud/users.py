@@ -142,6 +142,23 @@ async def update_user(
     return user
 
 
+async def set_user_password(db: AsyncSession, user: User, password: str) -> User:
+    """Replace a user's password hash.
+
+    Existing access and refresh tokens keep working: they are self contained
+    JWTs and there is no server side revocation store, so a reset only closes
+    the password based login path.
+
+    Raises:
+        PasswordTooLongError: If bcrypt cannot hash the password.
+    """
+    user.hashed_password = get_password_hash(password)
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 async def delete_user(db: AsyncSession, user_id: int) -> bool:
     """Delete user.
 
